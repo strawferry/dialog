@@ -1,9 +1,12 @@
 import classNames from 'classnames';
 import { useComposeRef } from 'rc-util/lib/ref';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { RefContext } from '../../context';
 import type { IDialogPropTypes } from '../../IDialogPropTypes';
 import MemoChildren from './MemoChildren';
+import type { DraggableData, DraggableEvent } from 'react-draggable';
+import Draggable from 'react-draggable';
+
 
 const sentinelStyle = { width: 0, height: 0, overflow: 'hidden', outline: 'none' };
 
@@ -37,6 +40,7 @@ const Panel = React.forwardRef<ContentRef, PanelProps>((props, ref) => {
     modalRender,
     onMouseDown,
     onMouseUp,
+    draggable = true,
     holderRef,
     visible,
     forceRender,
@@ -46,8 +50,11 @@ const Panel = React.forwardRef<ContentRef, PanelProps>((props, ref) => {
     styles: modalStyles,
   } = props;
 
+  const [disabled, setDisabled] = React.useState(true);
+  const [bounds, setBounds] = useState({ left: 0, top: 0, bottom: 0, right: 0 });
   // ================================= Refs =================================
   const { panel: panelRef } = React.useContext(RefContext);
+  const draggleRef = useRef<HTMLDivElement>(null);
 
   const mergedRef = useComposeRef(holderRef, panelRef);
 
@@ -80,13 +87,13 @@ const Panel = React.forwardRef<ContentRef, PanelProps>((props, ref) => {
   // ================================ Render ================================
   let footerNode: React.ReactNode;
   if (footer) {
-    footerNode = <div className={classNames(`${prefixCls}-footer`, modalClassNames?.footer)} style={{...modalStyles?.footer}}>{footer}</div>;
+    footerNode = <div className={classNames(`${prefixCls}-footer`, modalClassNames?.footer)} style={{ ...modalStyles?.footer }}>{footer}</div>;
   }
 
   let headerNode: React.ReactNode;
   if (title) {
     headerNode = (
-      <div className={classNames(`${prefixCls}-header`, modalClassNames?.header)} style={{...modalStyles?.header}}>
+      <div className={classNames(`${prefixCls}-header`, modalClassNames?.header)} style={{ ...modalStyles?.header }}>
         <div className={`${prefixCls}-title`} id={ariaId}>
           {title}
         </div>
@@ -103,16 +110,61 @@ const Panel = React.forwardRef<ContentRef, PanelProps>((props, ref) => {
     );
   }
 
-  const content = (
-    <div className={classNames(`${prefixCls}-content`, modalClassNames?.content)} style={modalStyles?.content}>
+  const onStart = (_event: DraggableEvent, uiData: DraggableData) => {
+    const { clientWidth, clientHeight } = window.document.documentElement;
+    const targetRect = draggleRef.current?.getBoundingClientRect();
+    if (!targetRect) {
+      return;
+    }
+    setBounds({
+      left: -targetRect.left + uiData.x,
+      right: clientWidth - (targetRect.right - uiData.x),
+      top: -targetRect.top + uiData.y,
+      bottom: clientHeight - (targetRect.bottom - uiData.y),
+    });
+  };
+
+  const content = draggable ? <Draggable
+    disabled={disabled}
+    bounds={bounds}
+    nodeRef={draggleRef}
+    onStart={(event, uiData) => onStart(event, uiData)}>
+    <div ref={draggleRef} className={classNames(`${prefixCls}-content`, modalClassNames?.content)} style={modalStyles?.content}>
+      {draggable && <div
+        style={{
+          position: 'absolute',
+          top: '-10px',
+          width: '100%',
+          height: '20px',
+          cursor: 'move',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        onMouseOver={() => {
+          if (disabled) {
+            setDisabled(false)
+          }
+        }}
+        onMouseOut={() => {
+          setDisabled(true)
+        }} />}
       {closer}
       {headerNode}
-      <div className={classNames(`${prefixCls}-body`, modalClassNames?.body)} style={{...bodyStyle, ...modalStyles?.body}} {...bodyProps}>
+      <div className={classNames(`${prefixCls}-body`, modalClassNames?.body)} style={{ ...bodyStyle, ...modalStyles?.body }} {...bodyProps}>
         {children}
       </div>
       {footerNode}
     </div>
-  );
+  </Draggable> : <div className={classNames(`${prefixCls}-content`, modalClassNames?.content)} style={modalStyles?.content}>
+    {closer}
+    {headerNode}
+      <div className={classNames(`${prefixCls}-body`, modalClassNames?.body)} style={{ ...bodyStyle, ...modalStyles?.body }} {...bodyProps}>
+        {children}
+      </div>
+      {footerNode}
+    </div>
 
   return (
     <div

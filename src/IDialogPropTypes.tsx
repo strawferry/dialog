@@ -52,6 +52,7 @@ export type IDialogPropTypes = {
   zIndex?: number;
   bodyProps?: any;
   maskProps?: any;
+  draggable?: boolean;
   rootClassName?: string;
   classNames?: ModalClassNames;
   styles?: ModalStyles;
