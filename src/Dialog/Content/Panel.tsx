@@ -138,6 +138,7 @@ const Panel = React.forwardRef<ContentRef, PanelProps>((props, ref) => {
           height: '20px',
           cursor: 'move',
           display: 'flex',
+          zIndex: 100,
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center'
